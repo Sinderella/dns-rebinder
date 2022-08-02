@@ -1,6 +1,6 @@
 # DNS Rebinder
 
-A DNS rebinder tool written in Rust. The idea is taken from (rbndr)[https://github.com/taviso/rbndr] and most of the implementation is taken from (dnsguide)[https://github.com/EmilHernvall/dnsguide/].
+A DNS rebinder tool written in Rust. The idea is taken from [rbndr](https://github.com/taviso/rbndr) and most of the implementation is taken from [dnsguide](https://github.com/EmilHernvall/dnsguide/).
 
 > Note: This is created for educational and research purposes. As such, it is stil in an experimental stage.
 
@@ -10,7 +10,7 @@ My personal setup is hosted on the rebnd.icu domain. It is not intended for publ
 
 ## Build
 
-(Rust)[https://www.rust-lang.org/learn/get-started] is required to build.
+[Rust](https://www.rust-lang.org/learn/get-started) is required to build.
 
 ```bash
 $ cargo b -r
