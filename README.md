@@ -1,4 +1,4 @@
-# DNS Rebinder
+# DNS Rebinder [![Rust](https://github.com/Sinderella/dns-rebinder/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/Sinderella/dns-rebinder/actions/workflows/rust.yml)
 
 A DNS rebinder tool written in Rust. The idea is taken from [rbndr](https://github.com/taviso/rbndr) and most of the implementation is taken from [dnsguide](https://github.com/EmilHernvall/dnsguide/).
 
