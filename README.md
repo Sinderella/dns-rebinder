@@ -6,7 +6,7 @@ A DNS rebinder tool written in Rust. The idea is taken from [rbndr](https://gith
 
 ## Public Instance
 
-My personal setup is hosted on the rebnd.icu domain. It is not intended for public use as I am not confident in the stability of the application.
+My personal setup is hosted on the [rebnd.icu]() domain. It is not intended for public use as I am not confident in the stability of the application.
 
 ## Build
 
