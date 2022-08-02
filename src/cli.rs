@@ -21,6 +21,10 @@ pub struct Cli {
     #[clap(short, long, value_parser, value_delimiter = ',')]
     pub ns_records: Option<Vec<String>>,
 
+    /// Public IP address
+    #[clap(long, value_parser)]
+    pub ns_public_ip: Option<Ipv4Addr>,
+
     /// Encode IP addresses for the domain
     #[clap(subcommand)]
     pub command: Option<Commands>,

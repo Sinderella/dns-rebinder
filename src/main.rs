@@ -23,11 +23,20 @@ type Result<T> = std::result::Result<T, Error>;
 struct Rebinder {
     domain: String,
     ns_records: Option<Vec<String>>,
+    ns_public_ip: Option<Ipv4Addr>,
 }
 
 impl Rebinder {
-    pub fn new(domain: String, ns_records: Option<Vec<String>>) -> Rebinder {
-        Rebinder { domain, ns_records }
+    pub fn new(
+        domain: String,
+        ns_records: Option<Vec<String>>,
+        ns_public_ip: Option<Ipv4Addr>,
+    ) -> Rebinder {
+        Rebinder {
+            domain,
+            ns_records,
+            ns_public_ip,
+        }
     }
 
     pub fn rebind(
@@ -47,6 +56,17 @@ impl Rebinder {
                 }
                 // accepting <primary>.<secondary>.<optional>.root.domain
                 let parts: Vec<&str> = qname.split('.').collect();
+
+                if parts[0].starts_with("ns") {
+                    if let Some(ns_public_ip) = self.ns_public_ip {
+                        packet.answers.push(DnsRecord::A {
+                            domain: qname.to_string(),
+                            addr: ns_public_ip,
+                            ttl: 300,
+                        });
+                        return Ok(packet);
+                    }
+                }
 
                 let primary = u32::from_str_radix(parts[0], 16)?;
                 let secondary = u32::from_str_radix(parts[1], 16)?;
@@ -216,6 +236,7 @@ fn main() -> Result<()> {
     let port = cli.port;
     let network_interface = cli.interface_ip;
     let ns_records = cli.ns_records;
+    let ns_public_ip = cli.ns_public_ip;
 
     if let Some(Commands::Encode { primary, secondary }) = &cli.command {
         println!(
@@ -240,7 +261,7 @@ fn main() -> Result<()> {
     let socket = UdpSocket::bind((network_interface, port))?;
     info!("started listening on port: {:?}", port);
 
-    let mut rebinder = Rebinder::new(domain, ns_records);
+    let mut rebinder = Rebinder::new(domain, ns_records, ns_public_ip);
 
     // For now, queries are handled sequentially, so an infinite loop for servicing
     // requests is initiated.
