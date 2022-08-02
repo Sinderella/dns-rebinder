@@ -2,19 +2,22 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose --release
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --verbose --release
+      - uses: actions/upload-artifact@v3
+        with:
+          name: dns-rebinder-${{ github.sha }}
+          path: ${{ github.workspace }}/target/release/dns-rebinder
