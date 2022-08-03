@@ -128,7 +128,7 @@ impl Rebinder {
                     "{:?}[{:?}] unsupported query ({:?})",
                     src_ip, header_id, qtype
                 );
-                packet.header.rescode = ResultCode::NOERROR;
+                packet.header.rescode = ResultCode::NOTIMP;
 
                 Ok(packet)
             }
@@ -153,7 +153,8 @@ impl Rebinder {
         // Create and initialize the response packet
         let mut response = DnsPacket::new();
         response.header.id = request.header.id;
-        response.header.recursion_desired = false;
+        response.header.recursion_desired = request.header.recursion_desired;
+        // recursive query is not supported
         response.header.recursion_available = false;
         response.header.response = true;
 
