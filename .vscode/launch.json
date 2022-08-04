@@ -1,0 +1,24 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug",
+      "program": "${fileDirname}/../target/debug/${workspaceRootFolderName}",
+      "args": [
+        "-d",
+        "rebnd.icu",
+        "-n",
+        "ns1.rebnd.icu,ns2.rebnd.icu",
+        "--ns-public-ip",
+        "49.12.76.13"
+      ],
+      "cwd": "${workspaceRoot}",
+      "sourceLanguages": ["rust"]
+    }
+  ]
+}

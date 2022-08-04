@@ -1,37 +1,38 @@
 use clap::{Parser, Subcommand};
 use std::net::Ipv4Addr;
 use std::ops::RangeInclusive;
+use trust_dns_proto::rr::Name;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
-pub struct Cli {
+pub(crate) struct Cli {
     /// Network interface
     #[clap(default_value_t = Ipv4Addr::new(0, 0, 0, 0), short, long, value_parser)]
-    pub interface_ip: Ipv4Addr,
+    pub(crate) interface_ip: Ipv4Addr,
 
     /// Root domain
     #[clap(short, long, value_parser)]
-    pub domain: String,
+    pub(crate) domain: String,
 
     /// Port to listen on
     #[clap(default_value_t = 53, short, long, value_parser = port_in_range)]
-    pub port: u16,
+    pub(crate) port: u16,
 
-    /// NS records
+    /// NS records (SOA record also points here)
     #[clap(short, long, value_parser, value_delimiter = ',')]
-    pub ns_records: Option<Vec<String>>,
+    pub(crate) ns_records: Option<Vec<Name>>,
 
     /// Public IP address
     #[clap(long, value_parser)]
-    pub ns_public_ip: Option<Ipv4Addr>,
+    pub(crate) ns_public_ip: Option<Ipv4Addr>,
 
     /// Encode IP addresses for the domain
     #[clap(subcommand)]
-    pub command: Option<Commands>,
+    pub(crate) command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
-pub enum Commands {
+pub(crate) enum Commands {
     /// does testing things
     Encode {
         /// primary IP address to encode
