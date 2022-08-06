@@ -18,6 +18,7 @@ use log::{error, info, warn};
 use rand::Rng;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
+
 use tokio::net::UdpSocket;
 
 use trust_dns_proto::op::{Message, Query};
@@ -30,11 +31,11 @@ type Error = Box<dyn std::error::Error>;
 type Result<T> = std::result::Result<T, Error>;
 
 fn process_query(
-    domain: Arc<String>,
-    ns_records: Arc<Option<Vec<Name>>>,
-    ns_public_ip: Arc<Option<Ipv4Addr>>,
+    domain: &str,
+    ns_records: &Option<Vec<Name>>,
+    ns_public_ip: &Option<Ipv4Addr>,
     query: &Query,
-    addr: SocketAddr,
+    addr: &SocketAddr,
     header_id: u16,
 ) -> Result<Vec<Record>> {
     let mut records: Vec<Record> = Vec::new();
@@ -45,7 +46,7 @@ fn process_query(
     .to_ascii_lowercase();
 
     // only support the root domain that it owns
-    if !qname.ends_with(domain.as_ref()) {
+    if !qname.ends_with(domain) {
         return Ok(records);
     }
 
@@ -65,7 +66,7 @@ fn process_query(
                 }
             }
 
-            if qname.eq(domain.as_ref()) {
+            if qname.eq(domain) {
                 return Ok(records);
             }
 
@@ -112,9 +113,9 @@ fn process_query(
                 }),
             ));
 
-            return Ok(records);
+            Ok(records)
         }
-        RecordType::NS => match ns_records.as_ref() {
+        RecordType::NS => match ns_records {
             Some(ns_records) => {
                 for ns_record in ns_records {
                     records.push(Record::from_rdata(
@@ -123,9 +124,9 @@ fn process_query(
                         RData::NS(ns_record.clone()),
                     ));
                 }
-                return Ok(records);
+                Ok(records)
             }
-            None => {}
+            None => Ok(records),
         },
         RecordType::SOA => {
             let ns_record = ns_records.as_deref().unwrap().first().unwrap();
@@ -146,23 +147,21 @@ fn process_query(
                 RData::SOA(soa),
             ));
 
-            return Ok(records);
+            Ok(records)
         }
-        RecordType::AAAA => return Ok(records),
-        RecordType::ANY => return Ok(records),
-        RecordType::AXFR => return Ok(records),
-        RecordType::CNAME => return Ok(records),
-        _ => return Ok(records),
+        RecordType::AAAA => Ok(records),
+        RecordType::ANY => Ok(records),
+        RecordType::AXFR => Ok(records),
+        RecordType::CNAME => Ok(records),
+        _ => Ok(records),
     }
-
-    Ok(records)
 }
 
 pub(crate) async fn handle_connection(
-    socket: Arc<UdpSocket>,
-    domain: Arc<String>,
-    ns_records: Arc<Option<Vec<Name>>>,
-    ns_public_ip: Arc<Option<Ipv4Addr>>,
+    socket: &UdpSocket,
+    domain: &str,
+    ns_records: &Option<Vec<Name>>,
+    ns_public_ip: &Option<Ipv4Addr>,
 ) -> Result<()> {
     let mut buffer = [0_u8; 512];
     let (len, addr) = socket.recv_from(&mut buffer).await.expect("receive failed");
@@ -183,7 +182,7 @@ pub(crate) async fn handle_connection(
     if let Some(query) = request.queries().first() {
         info!("{:?}[{:?}] - {:?}", addr, request.id(), query);
         message.add_query(query.clone());
-        let records = process_query(domain, ns_records, ns_public_ip, query, addr, request.id())?;
+        let records = process_query(domain, ns_records, ns_public_ip, query, &addr, request.id())?;
         info!("{:?}[{:?}] - {:?}", addr, request.id(), records);
         message.add_answers(records);
     }
@@ -243,10 +242,10 @@ async fn main() -> Result<()> {
 
         let handler = tokio::spawn(async move {
             match handle_connection(
-                sock_param,
-                domain_param,
-                ns_records_param,
-                ns_public_ip_param,
+                &sock_param,
+                &domain_param,
+                &ns_records_param,
+                &ns_public_ip_param,
             )
             .await
             {
