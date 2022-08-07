@@ -13,13 +13,18 @@ use crate::cli::Commands;
 
 use clap::Parser;
 use env_logger::Builder;
+use governor::clock::DefaultClock;
+use governor::state::keyed::DashMapStateStore;
+use governor::{Quota, RateLimiter};
 use log::LevelFilter;
 use log::{error, info, warn};
+use nonzero_ext::nonzero;
 use rand::Rng;
+use std::net::IpAddr;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
-
 use tokio::net::UdpSocket;
+use trust_dns_proto::op::MessageType;
 
 use trust_dns_proto::op::{Message, Query};
 use trust_dns_proto::rr::rdata::SOA;
@@ -159,6 +164,7 @@ fn process_query(
 
 pub(crate) async fn handle_connection(
     socket: &UdpSocket,
+    limiter: &RateLimiter<Ipv4Addr, DashMapStateStore<Ipv4Addr>, DefaultClock>,
     domain: &str,
     ns_records: &Option<Vec<Name>>,
     ns_public_ip: &Option<Ipv4Addr>,
@@ -167,8 +173,19 @@ pub(crate) async fn handle_connection(
     let (len, addr) = socket.recv_from(&mut buffer).await.expect("receive failed");
     let request = Message::from_vec(&buffer[0..len]).expect("failed parse of request");
 
+    if let IpAddr::V4(ipv4) = addr.ip() {
+        match limiter.check_key(&ipv4) {
+            Ok(_) => {}
+            Err(_blocked) => {
+                warn!("blocked: {:?}", ipv4);
+                return Ok(());
+            }
+        }
+    }
+
     let mut message = Message::new();
     message.set_id(request.id());
+    message.set_message_type(MessageType::Response);
     message.set_recursion_desired(request.recursion_desired());
     message.set_recursion_available(false);
 
@@ -229,6 +246,13 @@ async fn main() -> Result<()> {
         .expect("couldn't bind to address");
     info!("started listening on port: {:?}", port);
 
+    let quota = Quota::per_minute(nonzero!(20u32));
+    let ratelimiter = Arc::new(RateLimiter::<
+        Ipv4Addr,
+        DashMapStateStore<Ipv4Addr>,
+        DefaultClock,
+    >::keyed(quota));
+
     let s = Arc::new(socket);
     let d = Arc::new(domain);
     let nsr = Arc::new(ns_records);
@@ -239,10 +263,12 @@ async fn main() -> Result<()> {
         let domain_param = Arc::clone(&d);
         let ns_records_param = Arc::clone(&nsr);
         let ns_public_ip_param = Arc::clone(&npip);
+        let limiter_param = Arc::clone(&ratelimiter);
 
         let handler = tokio::spawn(async move {
             match handle_connection(
                 &sock_param,
+                &limiter_param,
                 &domain_param,
                 &ns_records_param,
                 &ns_public_ip_param,
