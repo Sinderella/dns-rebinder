@@ -10,6 +10,7 @@
 
 use crate::cli::Cli;
 use crate::cli::Commands;
+use crate::ip::IP;
 
 use clap::Parser;
 use env_logger::Builder;
@@ -31,6 +32,7 @@ use trust_dns_proto::rr::rdata::SOA;
 use trust_dns_proto::rr::{Name, RData, Record, RecordType};
 
 mod cli;
+mod ip;
 
 type Error = Box<dyn std::error::Error>;
 type Result<T> = std::result::Result<T, Error>;
@@ -79,26 +81,14 @@ fn process_query(
                 return Ok(records);
             }
 
-            let loopback = u32::from_be_bytes(Ipv4Addr::new(127, 0, 0, 1).octets());
-
-            let primary = match u32::from_str_radix(parts[0], 16) {
-                Ok(decoded) => decoded,
-                Err(_) => return Ok(records),
-            };
-            let secondary = match u32::from_str_radix(parts[1], 16) {
-                Ok(decoded) => decoded,
-                Err(_) => return Ok(records),
-            };
+            let (primary, secondary) = IP::decode(&qname).unwrap();
 
             info!(
                 "{:?}[{:?}] - parsed targets: primary: {:#?}, secondary: {:#?}",
-                addr,
-                header_id,
-                Ipv4Addr::from(primary),
-                Ipv4Addr::from(secondary)
+                addr, header_id, primary, secondary
             );
 
-            if primary.eq(&secondary) && primary.ne(&loopback) {
+            if primary.eq(&secondary) {
                 warn!(
                     "{:?}[{:?}] - primary and secondary labels are indentical, possibly an abuse",
                     addr, header_id
@@ -113,8 +103,8 @@ fn process_query(
                 query.name().clone(),
                 1,
                 RData::A(match is_primary {
-                    true => Ipv4Addr::from(primary),
-                    false => Ipv4Addr::from(secondary),
+                    true => primary,
+                    false => secondary,
                 }),
             ));
 
@@ -226,13 +216,10 @@ async fn main() -> Result<()> {
             "Domain: {}, Primary: {:?}, Secondary: {:?}",
             domain, primary, secondary
         );
-        let encoded_primary = hex::encode(&primary.octets());
-        let encoded_secondary = hex::encode(&secondary.octets());
 
-        println!(
-            "Encoded: {}.{}.{}",
-            encoded_primary, encoded_secondary, domain
-        );
+        let encoded_domain = ip::IP::encode(primary, secondary, &domain);
+
+        println!("Encoded: {}", encoded_domain);
         return Ok(());
     }
 
