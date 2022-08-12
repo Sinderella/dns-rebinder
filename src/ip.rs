@@ -16,7 +16,11 @@ impl error::Error for DecodeError {}
 
 impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "incorrect format, multi-level subdomain is required")
+        write!(
+            f,
+            "incorrect format, multi-level subdomain is required (kind: {}, message: {})",
+            self.kind, self.message
+        )
     }
 }
 
@@ -38,7 +42,7 @@ impl IP {
     }
 
     pub(crate) fn decode(encoded_domain: &str) -> Result<(Ipv4Addr, Ipv4Addr), DecodeError> {
-        if encoded_domain.matches('.').count() < 2 {
+        if encoded_domain.matches('.').count() < 3 {
             return Err(DecodeError {
                 kind: "input".to_owned(),
                 message: "requires multi-level subdomain".to_owned(),
@@ -117,5 +121,19 @@ mod tests {
         assert_eq!(secondary, secondary_decoded);
 
         Ok(())
+    }
+
+    #[test]
+    #[should_panic(expected = "unable to decode:")]
+    fn test_ipdecoding_failed_decode() {
+        let encoded_domain = "zzzzzzzz.zzzzzzzz.rebnd.icu";
+        IP::decode(encoded_domain).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "requires multi-level subdomain")]
+    fn test_ipdecoding_failed_multilevel() {
+        let encoded_domain = "7f000001.rebnd.icu";
+        IP::decode(encoded_domain).unwrap();
     }
 }

@@ -162,7 +162,7 @@ pub(crate) async fn handle_connection(
     limiter: &RateLimiter<Ipv4Addr, DashMapStateStore<Ipv4Addr>, DefaultClock>,
     domain: &str,
     ns_records: &Option<Vec<Name>>,
-    ns_public_ip: &Option<Ipv4Addr>,
+    ns_public_ip: Option<Ipv4Addr>,
 ) -> Result<()> {
     let mut buffer = [0_u8; 512];
     let (len, addr) = socket.recv_from(&mut buffer).await.expect("receive failed");
@@ -194,14 +194,7 @@ pub(crate) async fn handle_connection(
     if let Some(query) = request.queries().first() {
         info!("{:?}[{:?}] - {:?}", addr, request.id(), query);
         message.add_query(query.clone());
-        let records = process_query(
-            domain,
-            ns_records,
-            *ns_public_ip,
-            query,
-            &addr,
-            request.id(),
-        )?;
+        let records = process_query(domain, ns_records, ns_public_ip, query, &addr, request.id())?;
         info!("{:?}[{:?}] - {:?}", addr, request.id(), records);
         message.add_answers(records);
     }
@@ -270,7 +263,7 @@ async fn main() -> Result<()> {
                 &limiter_param,
                 &domain_param,
                 &ns_records_param,
-                &ns_public_ip_param,
+                *ns_public_ip_param,
             )
             .await
             {
