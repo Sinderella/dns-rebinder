@@ -1,10 +1,13 @@
 #![warn(
     clippy::dbg_macro,
     clippy::unimplemented,
+    clippy::pedantic,
+    clippy::cargo,
     missing_copy_implementations,
     non_snake_case,
     non_upper_case_globals,
     rust_2018_idioms,
+    rust_2021_compatibility,
     unreachable_pub
 )]
 
@@ -40,7 +43,7 @@ type Result<T> = std::result::Result<T, Error>;
 fn process_query(
     domain: &str,
     ns_records: &Option<Vec<Name>>,
-    ns_public_ip: &Option<Ipv4Addr>,
+    ns_public_ip: Option<Ipv4Addr>,
     query: &Query,
     addr: &SocketAddr,
     header_id: u16,
@@ -81,7 +84,10 @@ fn process_query(
                 return Ok(records);
             }
 
-            let (primary, secondary) = IP::decode(&qname).unwrap();
+            let (primary, secondary) = match IP::decode(&qname) {
+                Ok((primary, secondary)) => (primary, secondary),
+                Err(e) => return Err(Box::new(e)),
+            };
 
             info!(
                 "{:?}[{:?}] - parsed targets: primary: {:#?}, secondary: {:#?}",
@@ -99,14 +105,13 @@ fn process_query(
             let mut rng = rand::thread_rng();
             let is_primary = rng.gen_range(0..2) % 2 == 0;
 
-            records.push(Record::from_rdata(
-                query.name().clone(),
-                1,
-                RData::A(match is_primary {
-                    true => primary,
-                    false => secondary,
-                }),
-            ));
+            let record_a = if is_primary {
+                RData::A(primary)
+            } else {
+                RData::A(secondary)
+            };
+
+            records.push(Record::from_rdata(query.name().clone(), 1, record_a));
 
             Ok(records)
         }
@@ -124,7 +129,11 @@ fn process_query(
             None => Ok(records),
         },
         RecordType::SOA => {
-            let ns_record = ns_records.as_deref().unwrap().first().unwrap();
+            let ns_record = ns_records
+                .as_deref()
+                .unwrap()
+                .first()
+                .expect("invalid ns records");
 
             let soa = SOA::new(
                 ns_record.clone(),
@@ -132,7 +141,7 @@ fn process_query(
                 1,
                 86400,
                 7200,
-                4000000,
+                4_000_000,
                 600,
             );
 
@@ -144,10 +153,6 @@ fn process_query(
 
             Ok(records)
         }
-        RecordType::AAAA => Ok(records),
-        RecordType::ANY => Ok(records),
-        RecordType::AXFR => Ok(records),
-        RecordType::CNAME => Ok(records),
         _ => Ok(records),
     }
 }
@@ -189,7 +194,14 @@ pub(crate) async fn handle_connection(
     if let Some(query) = request.queries().first() {
         info!("{:?}[{:?}] - {:?}", addr, request.id(), query);
         message.add_query(query.clone());
-        let records = process_query(domain, ns_records, ns_public_ip, query, &addr, request.id())?;
+        let records = process_query(
+            domain,
+            ns_records,
+            *ns_public_ip,
+            query,
+            &addr,
+            request.id(),
+        )?;
         info!("{:?}[{:?}] - {:?}", addr, request.id(), records);
         message.add_answers(records);
     }
@@ -217,7 +229,7 @@ async fn main() -> Result<()> {
             domain, primary, secondary
         );
 
-        let encoded_domain = ip::IP::encode(primary, secondary, &domain);
+        let encoded_domain = ip::IP::encode(*primary, *secondary, &domain);
 
         println!("Encoded: {}", encoded_domain);
         return Ok(());

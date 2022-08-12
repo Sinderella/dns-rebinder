@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
+use core::ops::RangeInclusive;
 use std::net::Ipv4Addr;
-use std::ops::RangeInclusive;
 use trust_dns_proto::rr::Name;
 
 #[derive(Parser)]
@@ -45,14 +45,14 @@ pub(crate) enum Commands {
     },
 }
 
-const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
+const PORT_RANGE: RangeInclusive<u16> = 1..=0xFFFF;
 
-fn port_in_range(s: &str) -> std::result::Result<u16, String> {
-    let port: usize = s
+fn port_in_range(s: &str) -> core::result::Result<u16, String> {
+    let port: u16 = s
         .parse()
-        .map_err(|_| format!("`{}` isn't a port number", s))?;
+        .map_err(|e| -> String { format!("`{}` isn't a port number: {}", s, e) })?;
     if PORT_RANGE.contains(&port) {
-        Ok(port as u16)
+        Ok(port)
     } else {
         Err(format!(
             "Port not in range {}-{}",

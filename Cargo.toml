@@ -1,7 +1,13 @@
 [package]
 name = "dns-rebinder"
-authors = ["sinderella"]
 version = "0.2.3"
+repository = "https://github.com/Sinderella/dns-rebinder"
+readme = "README.md"
+authors = ["sinderella"]
+description = "A dns server for testing DNS rebinding attack"
+keywords = ["DNS", "dns-rebind", "pentest", "penetration-test"]
+categories = ["development-tools::testing", "network-programming"]
+license = "MIT"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
