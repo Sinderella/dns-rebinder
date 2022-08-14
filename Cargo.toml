@@ -10,6 +10,13 @@ categories = ["development-tools::testing", "network-programming"]
 license = "MIT"
 edition = "2021"
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "dns-rebinder"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
